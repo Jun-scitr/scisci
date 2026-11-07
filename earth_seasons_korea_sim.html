@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>지구 공전/자전과 계절의 변화 (우리나라 중심)</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #050505;
+            color: #ffffff;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        #ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 420px;
+            background: rgba(20, 20, 30, 0.85);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 1.4rem;
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #4facfe;
+            text-align: center;
+        }
+
+        .info-box {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #f39c12;
+        }
+
+        .info-box p {
+            margin: 8px 0;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+
+        .season-highlight {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #f1c40f;
+        }
+        
+        .korea-highlight {
+            color: #ff5252;
+            font-weight: bold;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            color: #bdc3c7;
+        }
+
+        input[type=range] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #2980b9;
+        }
+
+        button.btn-toggle {
+            background: #e74c3c;
+        }
+        button.btn-toggle:hover {
+            background: #c0392b;
+        }
+        
+        #instruction {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.6);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            pointer-events: none;
+        }
+
+        .legend {
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: #aaa;
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .legend div {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .color-box {
+            width: 14px; height: 14px;
+            border-radius: 3px;
+            margin-right: 8px;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+    <div id="ui-panel">
+        <h1>🌏 계절의 변화 (우리나라 관찰)</h1>
+        
+        <div class="info-box">
+            <p>현재 계절: <span id="season-text" class="season-highlight">동지 (겨울)</span></p>
+            <p id="desc-text">북반구가 태양 반대편으로 기울어져 있습니다.</p>
+            <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 10px 0;">
+            <p style="font-size: 0.85rem; color: #dcdde1;">
+                💡 <span class="korea-highlight">빨간색 원(북위 37.5도)</span>이 밝은 햇빛 쪽에 얼마나 들어와 있는지 비교해보세요! 밝은 부분이 길면 낮이 길고(여름), 짧으면 낮이 짧습니다(겨울).
+            </p>
+        </div>
+
+        <div class="control-group">
+            <label>공전 위치 (0° 동지 ~ 180° 하지)</label>
+            <input type="range" id="orbit-slider" min="0" max="360" value="0">
+        </div>
+
+        <div class="control-group">
+            <label>자전 및 공전 속도</label>
+            <input type="range" id="speed-slider" min="0.1" max="3" step="0.1" value="1">
+        </div>
+
+        <div class="button-group">
+            <button id="play-btn">일시정지</button>
+            <button id="tilt-btn" class="btn-toggle">자전축 기울기: 23.5°</button>
+        </div>
+
+        <div class="legend">
+            <div><div class="color-box" style="background:#ff5252;"></div> <strong>우리나라 (북위 37.5°) 자전 경로</strong></div>
+            <div><div class="color-box" style="background:#4cd137;"></div> 적도 (Equator)</div>
+            <div><div class="color-box" style="background:#f1c40f;"></div> 자전축 (23.5° 기울어짐)</div>
+        </div>
+    </div>
+
+    <div id="instruction">마우스 왼쪽 드래그: 시점 회전 | 휠: 확대/축소 | 우클릭: 이동</div>
+
+    <div id="canvas-container"></div>
+
+    <script>
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050508);
+        
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 30, 70); 
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // 조명 (태양빛과 그림자를 명확하게 하기 위함)
+        const ambientLight = new THREE.AmbientLight(0x111122, 1.5); // 어두운 면도 형태는 보이게
+        scene.add(ambientLight);
+
+        const sunLight = new THREE.PointLight(0xffffff, 3.5, 500);
+        sunLight.position.set(0, 0, 0);
+        sunLight.castShadow = true;
+        // 그림자 품질 향상
+        sunLight.shadow.mapSize.width = 2048;
+        sunLight.shadow.mapSize.height = 2048;
+        scene.add(sunLight);
+
+        // 태양 
+        const sunGeometry = new THREE.SphereGeometry(4, 32, 32);
+        const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xffdd44 }); 
+        const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+        scene.add(sun);
+
+        const haloGeo = new THREE.SphereGeometry(4.8, 32, 32);
+        const haloMat = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.3 });
+        const halo = new THREE.Mesh(haloGeo, haloMat);
+        scene.add(halo);
+
+        // 공전 궤도
+        const orbitRadius = 35;
+        const orbitPathGeo = new THREE.RingGeometry(orbitRadius - 0.05, orbitRadius + 0.05, 128);
+        const orbitPathMat = new THREE.MeshBasicMaterial({ color: 0x555555, side: THREE.DoubleSide });
+        const orbitPath = new THREE.Mesh(orbitPathGeo, orbitPathMat);
+        orbitPath.rotation.x = Math.PI / 2;
+        scene.add(orbitPath);
+
+        // 지구 그룹 생성
+        const earthPositionGroup = new THREE.Group();
+        scene.add(earthPositionGroup);
+
+        const earthTiltGroup = new THREE.Group();
+        // 각도 0일 때 +X 위치. 태양은 -X 방향.
+        // 북극이 +X 방향을 향하게 기울이면 태양을 등지게 됨 -> 동지!
+        const TILT_ANGLE = -23.5 * (Math.PI / 180);
+        earthTiltGroup.rotation.z = TILT_ANGLE; 
+        earthPositionGroup.add(earthTiltGroup);
+
+        // 지구 메쉬 (텍스처 로드)
+        const earthRadius = 3;
+        const earthGeo = new THREE.SphereGeometry(earthRadius, 64, 64);
+        
+        // 질감 로드 (실패시 파란색 대체)
+        const textureLoader = new THREE.TextureLoader();
+        const earthMat = new THREE.MeshStandardMaterial({ 
+            color: 0x2980b9, 
+            roughness: 0.7,
+            metalness: 0.1
+        });
+        
+        // 고해상도 지구 텍스처
+        textureLoader.load('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg', 
+            function(texture) {
+                earthMat.map = texture;
+                earthMat.color = new THREE.Color(0xffffff); // 텍스처 색상 사용
+                earthMat.needsUpdate = true;
+            }
+        );
+
+        const earthMesh = new THREE.Mesh(earthGeo, earthMat);
+        earthMesh.castShadow = true;
+        earthMesh.receiveShadow = true;
+        // 텍스처의 경도가 맞도록 초기 회전 세팅 (우리나라가 적절한 위치에 오게 보정)
+        earthMesh.rotation.y = -Math.PI / 2; 
+        earthTiltGroup.add(earthMesh); 
+
+        // 📌 [핵심] 우리나라(북위 37.5도) 자전 경로 (빨간색 링)
+        const krLat = 37.5 * (Math.PI / 180);
+        const krRingRadius = earthRadius * Math.cos(krLat);
+        const krRingY = earthRadius * Math.sin(krLat);
+        
+        const krPathGeo = new THREE.TorusGeometry(krRingRadius, 0.06, 16, 100);
+        const krPathMat = new THREE.MeshBasicMaterial({ color: 0xff5252 });
+        const krPath = new THREE.Mesh(krPathGeo, krPathMat);
+        krPath.rotation.x = Math.PI / 2;
+        krPath.position.y = krRingY;
+        earthTiltGroup.add(krPath); // 자전축 그룹에 추가 (기울기 따라감, 자체 회전 안함)
+
+        // 📌 우리나라 위치 마커 (빨간색 야광 구체)
+        // 텍스처 상 우리나라 위치 대략 (위도 37.5, 경도 127)
+        // TextureMap에서 우리나라 좌표를 맞추기 위한 수식
+        const krLon = (127 - 90) * (Math.PI / 180); 
+        const markerX = earthRadius * Math.cos(krLat) * Math.cos(krLon);
+        const markerY = earthRadius * Math.sin(krLat);
+        const markerZ = earthRadius * Math.cos(krLat) * Math.sin(krLon);
+
+        const markerGeo = new THREE.SphereGeometry(0.15, 16, 16);
+        const markerMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const koreaMarker = new THREE.Mesh(markerGeo, markerMat);
+        koreaMarker.position.set(markerX, markerY, markerZ);
+        
+        // 후광
+        const markerGlow = new THREE.Mesh(
+            new THREE.SphereGeometry(0.25, 16, 16),
+            new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.6 })
+        );
+        koreaMarker.add(markerGlow);
+        earthMesh.add(koreaMarker); // 지구와 함께 회전!
+
+        // 적도선 시각화 (초록색 링)
+        const equatorGeo = new THREE.TorusGeometry(earthRadius + 0.02, 0.03, 8, 100);
+        const equatorMat = new THREE.MeshBasicMaterial({ color: 0x4cd137 });
+        const equator = new THREE.Mesh(equatorGeo, equatorMat);
+        equator.rotation.x = Math.PI / 2;
+        earthTiltGroup.add(equator);
+
+        // 자전축 시각화 (노란색 선)
+        const axisGeo = new THREE.CylinderGeometry(0.03, 0.03, earthRadius * 2.8, 8);
+        const axisMat = new THREE.MeshBasicMaterial({ color: 0xf1c40f });
+        const axis = new THREE.Mesh(axisGeo, axisMat);
+        earthTiltGroup.add(axis);
+
+        // 상태 변수
+        let orbitAngle = 0; 
+        let isPlaying = true;
+        let speedMultiplier = 1;
+        let isTilted = true;
+
+        // UI 요소
+        const sliderOrbit = document.getElementById('orbit-slider');
+        const sliderSpeed = document.getElementById('speed-slider');
+        const btnPlay = document.getElementById('play-btn');
+        const btnTilt = document.getElementById('tilt-btn');
+        const seasonText = document.getElementById('season-text');
+        const descText = document.getElementById('desc-text');
+
+        // 이벤트 리스너
+        sliderOrbit.addEventListener('input', (e) => {
+            orbitAngle = parseFloat(e.target.value);
+            updateEarthPosition();
+        });
+
+        sliderSpeed.addEventListener('input', (e) => {
+            speedMultiplier = parseFloat(e.target.value);
+        });
+
+        btnPlay.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            btnPlay.textContent = isPlaying ? "일시정지" : "재생";
+        });
+
+        btnTilt.addEventListener('click', () => {
+            isTilted = !isTilted;
+            earthTiltGroup.rotation.z = isTilted ? TILT_ANGLE : 0;
+            btnTilt.textContent = isTilted ? "자전축 기울기: 23.5°" : "자전축 기울기: 0° (계절없음)";
+            btnTilt.style.background = isTilted ? "#e74c3c" : "#95a5a6";
+            updateSeasonUI(orbitAngle);
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        function updateEarthPosition() {
+            const rad = orbitAngle * (Math.PI / 180);
+            earthPositionGroup.position.x = Math.cos(rad) * orbitRadius;
+            earthPositionGroup.position.z = Math.sin(rad) * orbitRadius;
+            updateSeasonUI(orbitAngle);
+        }
+
+        function updateSeasonUI(angle) {
+            let a = angle % 360;
+            if (a < 0) a += 360;
+
+            if (!isTilted) {
+                seasonText.textContent = "계절 변화 없음";
+                seasonText.style.color = "#bdc3c7";
+                descText.innerHTML = "자전축이 수직이므로 <b>태양의 남중고도와 낮의 길이가 일년 내내 일정</b>하여 계절이 바뀌지 않습니다.";
+                return;
+            }
+
+            if (a > 315 || a <= 45) {
+                seasonText.textContent = "동지 (겨울)";
+                seasonText.style.color = "#3498db";
+                descText.innerHTML = "우리나라가 태양 반대편으로 기울었습니다. 빨간 경로를 보면 <b>어두운 밤 지역이 훨씬 길어</b> 낮이 가장 짧고 태양 고도도 낮습니다.";
+            } else if (a > 45 && a <= 135) {
+                seasonText.textContent = "춘분 (봄)";
+                seasonText.style.color = "#2ecc71";
+                descText.innerHTML = "태양빛이 적도를 수직으로 비춥니다. 빨간 경로의 <b>낮과 밤 길이가 거의 같아집니다.</b>";
+            } else if (a > 135 && a <= 225) {
+                seasonText.textContent = "하지 (여름)";
+                seasonText.style.color = "#e74c3c";
+                descText.innerHTML = "우리나라가 태양 쪽으로 흠뻑 기울었습니다! 빨간 경로의 <b>밝은 낮 지역이 훨씬 길어</b> 낮이 가장 길고 무덥습니다.";
+            } else {
+                seasonText.textContent = "추분 (가을)";
+                seasonText.style.color = "#f1c40f";
+                descText.innerHTML = "태양빛이 다시 적도를 향합니다. 무더위가 가시고 <b>낮과 밤 길이가 같아집니다.</b>";
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (isPlaying) {
+                orbitAngle += 0.1 * speedMultiplier; // 공전 속도
+                if (orbitAngle >= 360) orbitAngle -= 360;
+                sliderOrbit.value = orbitAngle;
+                updateEarthPosition();
+            }
+
+            if(isPlaying) {
+                // 자전 속도 (실제보단 느리지만 시각적으로 잘 보이게 조절)
+                earthMesh.rotation.y += 0.04 * speedMultiplier; 
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        updateEarthPosition();
+        animate();
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>보일의 법칙 2D 시뮬레이션 (입자 운동)</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #sidebar {
+            width: 380px;
+            background-color: #34495e;
+            padding: 25px;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+
+        #main-view {
+            flex: 1;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at center, #34495e 0%, #2c3e50 100%);
+        }
+
+        canvas {
+            border-bottom: 5px solid #7f8c8d;
+        }
+
+        h1 {
+            font-size: 1.6rem;
+            color: #3498db;
+            margin-top: 0;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: #bdc3c7;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .dashboard {
+            background-color: #2c3e50;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            border-left: 5px solid #e74c3c;
+        }
+
+        .meter {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 1.1rem;
+        }
+
+        .meter:last-child {
+            margin-bottom: 0;
+        }
+
+        .value {
+            font-weight: bold;
+            font-size: 1.3rem;
+            font-family: monospace;
+        }
+
+        .val-pext { color: #e74c3c; }
+        .val-pint { color: #3498db; }
+        .val-vol { color: #2ecc71; }
+
+        .equation {
+            background-color: #1a252f;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            margin-top: 15px;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #ecf0f1;
+        }
+
+        input[type=range] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: #e74c3c;
+        }
+
+        .instruction {
+            margin-top: auto;
+            background-color: rgba(255,255,255,0.05);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #bdc3c7;
+        }
+
+        .highlight { color: #f1c40f; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <h1>보일의 법칙 시뮬레이션</h1>
+        <div class="subtitle">기체 입자의 운동과 압력·부피의 관계</div>
+        
+        <div class="dashboard">
+            <div class="meter">
+                <span>외부 압력 (진공 펌프):</span>
+                <span class="value val-pext" id="txt-pext">1.00 atm</span>
+            </div>
+            <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 15px 0;">
+            <div class="meter">
+                <span>풍선 내부 압력:</span>
+                <span class="value val-pint" id="txt-pint">1.00 atm</span>
+            </div>
+            <div class="meter">
+                <span>풍선 부피:</span>
+                <span class="value val-vol" id="txt-vol">1.00 L</span>
+            </div>
+            <div class="equation">
+                <span style="color:#3498db">P</span> × <span style="color:#2ecc71">V</span> = <span id="txt-pv">1.00</span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>
+                <span>외부 압력 조절하기</span>
+            </label>
+            <input type="range" id="slider-pext" min="0.3" max="2.5" step="0.05" value="1.0">
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: #95a5a6; margin-top: 5px;">
+                <span>0.3 (저압)</span>
+                <span>1.0 (1기압)</span>
+                <span>2.5 (고압)</span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>
+                <span>온도 (입자 운동 속도)</span>
+            </label>
+            <input type="range" id="slider-temp" min="0.5" max="2.0" step="0.1" value="1.0">
+            <div style="text-align: right; font-size: 0.8rem; color: #95a5a6; margin-top: 5px;">*보일의 법칙은 온도가 일정할 때 성립합니다.</div>
+        </div>
+
+        <div class="instruction">
+            💡 <b>관찰 포인트:</b><br>
+            외부 압력을 낮추면 풍선이 커집니다. 부피가 커질수록 기체 입자들이 풍선 벽에 부딪히는 횟수가 줄어들어 <span class="highlight">내부 압력이 낮아지며</span>, 결국 외부 압력과 같아질 때 팽창을 멈춥니다.
+        </div>
+    </div>
+
+    <div id="main-view">
+        <canvas id="simCanvas"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Canvas 크기 설정
+        canvas.width = 600;
+        canvas.height = 600;
+
+        // 중앙 좌표
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2 + 20;
+
+        // 상태 변수
+        let P_ext = 1.0; // 외부 압력
+        let V_target = 1.0; // 목표 부피
+        let V_current = 1.0; // 현재 부피
+        let P_int = 1.0; // 내부 압력
+
+        const baseRadius = 120; // 1.0 L 일 때의 2D 반경
+        let currentRadius = baseRadius;
+        
+        let tempMultiplier = 1.0; // 온도 (속도 배율)
+
+        // UI 요소
+        const txtPext = document.getElementById('txt-pext');
+        const txtPint = document.getElementById('txt-pint');
+        const txtVol = document.getElementById('txt-vol');
+        const txtPV = document.getElementById('txt-pv');
+        
+        const sliderPext = document.getElementById('slider-pext');
+        const sliderTemp = document.getElementById('slider-temp');
+
+        // 입자 클래스 (기체 분자)
+        class Particle {
+            constructor() {
+                // 구 내부의 임의의 위치에서 시작
+                const angle = Math.random() * Math.PI * 2;
+                const r = Math.random() * (baseRadius - 5);
+                this.x = cx + Math.cos(angle) * r;
+                this.y = cy + Math.sin(angle) * r;
+                
+                // 임의의 방향 설정
+                const dir = Math.random() * Math.PI * 2;
+                this.baseSpeed = 3 + Math.random() * 2; // 기본 속도
+                this.vx = Math.cos(dir) * this.baseSpeed;
+                this.vy = Math.sin(dir) * this.baseSpeed;
+                this.radius = 3; // 입자 크기
+            }
+
+            update(radius) {
+                // 현재 속도에 온도 배율 적용
+                let currentVx = this.vx * tempMultiplier;
+                let currentVy = this.vy * tempMultiplier;
+
+                this.x += currentVx;
+                this.y += currentVy;
+
+                // 중심으로부터의 거리 계산
+                let dx = this.x - cx;
+                let dy = this.y - cy;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+
+                // 풍선 경계(반경)와 충돌 시 반사
+                if (dist > radius - this.radius) {
+                    // 법선 벡터
+                    let nx = dx / dist;
+                    let ny = dy / dist;
+                    
+                    // 속도 벡터와의 내적
+                    let dot = this.vx * nx + this.vy * ny;
+                    
+                    // 반사 (입사각 = 반사각)
+                    this.vx = this.vx - 2 * dot * nx;
+                    this.vy = this.vy - 2 * dot * ny;
+                    
+                    // 풍선 벽 바깥으로 나가는 것을 방지하여 위치 강제 보정
+                    this.x = cx + nx * (radius - this.radius - 0.1);
+                    this.y = cy + ny * (radius - this.radius - 0.1);
+                }
+            }
+
+            draw(ctx) {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#f1c40f'; // 노란색 입자
+                ctx.fill();
+            }
+        }
+
+        // 입자 150개 생성
+        const particles = [];
+        for (let i = 0; i < 150; i++) {
+            particles.push(new Particle());
+        }
+
+        // 입력 이벤트
+        sliderPext.addEventListener('input', (e) => {
+            P_ext = parseFloat(e.target.value);
+            // 보일의 법칙: P * V = 일정 (k=1) => V = 1 / P
+            V_target = 1.0 / P_ext;
+            txtPext.textContent = P_ext.toFixed(2) + " atm";
+        });
+
+        sliderTemp.addEventListener('input', (e) => {
+            tempMultiplier = parseFloat(e.target.value);
+            // 온도(속도)가 변하면 보일의 법칙 기본 상수가 변하지만 
+            // 시각적 효과를 위해 압력과 부피 관계식에는 영향을 주지 않도록 분리해서 보여줌
+        });
+
+        // 렌더링 루프
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // 부피 애니메이션 (자연스러운 팽창/수축)
+            V_current += (V_target - V_current) * 0.05;
+            P_int = 1.0 / V_current;
+            
+            // 2D 에서는 면적이 부피를 대변한다고 시각화 (면적 ∝ r^2 => r ∝ sqrt(V))
+            currentRadius = baseRadius * Math.sqrt(V_current);
+
+            // UI 업데이트
+            txtPint.textContent = P_int.toFixed(2) + " atm";
+            txtVol.textContent = V_current.toFixed(2) + " L";
+            txtPV.textContent = (P_int * V_current).toFixed(2);
+
+            // 캔버스 초기화
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 배경 그리기 (진공 챔버)
+            drawChamber();
+
+            // 풍선 그리기
+            drawBalloon(currentRadius);
+
+            // 입자 업데이트 및 그리기
+            for (let particle of particles) {
+                particle.update(currentRadius);
+                particle.draw(ctx);
+            }
+        }
+
+        function drawChamber() {
+            // 유리 돔 (Bell Jar)
+            ctx.beginPath();
+            ctx.moveTo(100, 550);
+            ctx.lineTo(100, 250);
+            // 반원 형태의 지붕
+            ctx.arc(300, 250, 200, Math.PI, 0);
+            ctx.lineTo(500, 550);
+            
+            ctx.fillStyle = 'rgba(129, 236, 236, 0.1)';
+            ctx.fill();
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = 'rgba(129, 236, 236, 0.5)';
+            ctx.stroke();
+
+            // 바닥 판
+            ctx.fillStyle = '#7f8c8d';
+            ctx.fillRect(70, 550, 460, 20);
+            ctx.fillStyle = '#95a5a6';
+            ctx.fillRect(80, 550, 440, 5);
+        }
+
+        function drawBalloon(r) {
+            ctx.save();
+            // 풍선 몸체
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(231, 76, 60, 0.6)'; // 반투명 빨간색
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#c0392b';
+            ctx.stroke();
+
+            // 풍선 매듭
+            ctx.beginPath();
+            ctx.moveTo(cx, cy + r);
+            ctx.lineTo(cx - 10, cy + r + 15);
+            ctx.lineTo(cx + 10, cy + r + 15);
+            ctx.closePath();
+            ctx.fillStyle = '#c0392b';
+            ctx.fill();
+            ctx.restore();
+        }
+
+        animate();
+    </script>
+</body>
+</html>

@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cell Split: 쉐이프 시프트 (모양 맞추기)</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap');
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #1a1a2e;
+            font-family: 'Poppins', sans-serif;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+        }
+
+        canvas {
+            background-color: #16213e;
+            border: 4px solid #0f3460;
+            border-radius: 12px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+            display: block;
+        }
+
+        .ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            font-size: 24px;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        #menu, #game-over {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(22, 33, 62, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 12px;
+            backdrop-filter: blur(5px);
+            z-index: 10;
+        }
+
+        #game-over {
+            display: none;
+        }
+
+        h1 {
+            font-size: 48px;
+            margin-bottom: 10px;
+            color: #e94560;
+            text-align: center;
+        }
+
+        p {
+            font-size: 18px;
+            margin-bottom: 30px;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        button {
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #fff;
+            background-color: #e94560;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+            pointer-events: auto;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            background-color: #ff5270;
+        }
+
+        .leaderboard-box {
+            margin-top: 30px;
+            background: rgba(0,0,0,0.4);
+            padding: 20px;
+            border-radius: 8px;
+            width: 300px;
+        }
+
+        .leaderboard-box h3 {
+            margin-top: 0;
+            color: #4cd137;
+            text-align: center;
+        }
+
+        .score-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .score-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .bonus-text {
+            color: #FFD700;
+            animation: pop 0.3s ease-out;
+        }
+        
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.5); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div class="ui-layer">
+            <div id="scoreDisplay">점수: 0</div>
+            <div id="timeDisplay">남은 시간: 30s</div>
+        </div>
+
+        <div id="menu">
+            <h1>Cell Split<br><span style="font-size: 24px; color: #4cd137;">Shape Shift Update</span></h1>
+            <p>
+                공을 클릭하면 분열하며 <b>모양(원 ➔ 네모 ➔ 세모)</b>이 바뀝니다!<br>
+                <span style="color:#FFD700; font-weight:bold;">진짜 노란색 공</span>을 누르면 보너스 50점.<br>
+                <b style="color:#00a8ff;">목표: 제한시간 종료 시 화면의 모든 공 모양을 통일하세요! (+5000점)</b>
+            </p>
+            <button id="startBtn">게임 시작</button>
+            <div class="leaderboard-box">
+                <h3>로컬 랭킹 순위</h3>
+                <ul class="score-list" id="menuLeaderboard"></ul>
+            </div>
+        </div>
+
+        <div id="game-over">
+            <h1>게임 종료!</h1>
+            <p id="finalScoreDisplay">최종 점수: 0</p>
+            <input type="text" id="playerName" placeholder="닉네임을 입력하세요" style="padding: 10px; font-size: 16px; margin-bottom: 20px; border-radius: 5px; border: none; text-align: center; pointer-events: auto;">
+            <button id="restartBtn">점수 저장 및 처음으로</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let balls = [];
+        let score = 0;
+        let timeLeft = 30;
+        let timerInterval;
+        let isPlaying = false;
+
+        // 모양과 색상 정의
+        const shapes = ['circle', 'square', 'triangle'];
+        const colors = ['#e94560', '#0f3460', '#4cd137', '#9c88ff', '#00a8ff', '#FFD700']; 
+        const bonusColor = '#FFD700';
+
+        function randomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1) + min);
+        }
+
+        function rotate(velocity, angle) {
+            return {
+                x: velocity.x * Math.cos(angle) - velocity.y * Math.sin(angle),
+                y: velocity.x * Math.sin(angle) + velocity.y * Math.cos(angle)
+            };
+        }
+
+        function resolveCollision(particle, otherParticle) {
+            const xVelocityDiff = particle.dx - otherParticle.dx;
+            const yVelocityDiff = particle.dy - otherParticle.dy;
+            const xDist = otherParticle.x - particle.x;
+            const yDist = otherParticle.y - particle.y;
+
+            if (xVelocityDiff * xDist + yVelocityDiff * yDist >= 0) {
+                const angle = -Math.atan2(otherParticle.y - particle.y, otherParticle.x - particle.x);
+                const m1 = particle.radius;
+                const m2 = otherParticle.radius;
+
+                const u1 = rotate({ x: particle.dx, y: particle.dy }, angle);
+                const u2 = rotate({ x: otherParticle.dx, y: otherParticle.dy }, angle);
+
+                const v1 = { x: u1.x * (m1 - m2) / (m1 + m2) + u2.x * 2 * m2 / (m1 + m2), y: u1.y };
+                const v2 = { x: u2.x * (m2 - m1) / (m1 + m2) + u1.x * 2 * m1 / (m1 + m2), y: u2.y };
+
+                const vFinal1 = rotate(v1, -angle);
+                const vFinal2 = rotate(v2, -angle);
+
+                particle.dx = vFinal1.x;
+                particle.dy = vFinal1.y;
+                otherParticle.dx = vFinal2.x;
+                otherParticle.dy = vFinal2.y;
+            }
+        }
+
+        class Ball {
+            constructor(x, y, radius, color, isBonus = false, shape = 'circle') {
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+                this.color = color;
+                this.isBonus = isBonus; 
+                this.shape = shape; 
+                this.dx = (Math.random() - 0.5) * 8;
+                this.dy = (Math.random() - 0.5) * 8;
+            }
+
+            draw() {
+                ctx.beginPath();
+                
+                if (this.shape === 'circle') {
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                } else if (this.shape === 'square') {
+                    ctx.rect(this.x - this.radius, this.y - this.radius, this.radius * 2, this.radius * 2);
+                } else if (this.shape === 'triangle') {
+                    ctx.moveTo(this.x, this.y - this.radius);
+                    ctx.lineTo(this.x + this.radius * 0.866, this.y + this.radius * 0.5);
+                    ctx.lineTo(this.x - this.radius * 0.866, this.y + this.radius * 0.5);
+                }
+
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                
+                if (this.shape === 'triangle') {
+                    ctx.closePath();
+                }
+                ctx.stroke();
+                
+                if (this.shape !== 'triangle') {
+                    ctx.closePath();
+                }
+            }
+
+            update(ballsArray) {
+                this.draw();
+
+                if (this.x + this.radius >= canvas.width || this.x - this.radius <= 0) {
+                    this.dx = -this.dx;
+                    this.x = this.x + this.radius >= canvas.width ? canvas.width - this.radius : this.radius;
+                }
+                if (this.y + this.radius >= canvas.height || this.y - this.radius <= 0) {
+                    this.dy = -this.dy;
+                    this.y = this.y + this.radius >= canvas.height ? canvas.height - this.radius : this.radius;
+                }
+
+                for (let i = 0; i < ballsArray.length; i++) {
+                    if (this === ballsArray[i]) continue;
+                    
+                    const dx = this.x - ballsArray[i].x;
+                    const dy = this.y - ballsArray[i].y;
+                    const distance = Math.hypot(dx, dy);
+
+                    if (distance < this.radius + ballsArray[i].radius) {
+                        resolveCollision(this, ballsArray[i]);
+                        
+                        const overlap = (this.radius + ballsArray[i].radius) - distance;
+                        const nx = dx / distance;
+                        const ny = dy / distance;
+                        this.x += nx * (overlap / 2);
+                        this.y += ny * (overlap / 2);
+                        ballsArray[i].x -= nx * (overlap / 2);
+                        ballsArray[i].y -= ny * (overlap / 2);
+                    }
+                }
+
+                this.x += this.dx;
+                this.y += this.dy;
+            }
+        }
+
+        canvas.addEventListener('click', (event) => {
+            if (!isPlaying) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+
+            for (let i = balls.length - 1; i >= 0; i--) {
+                const ball = balls[i];
+                const distance = Math.hypot(mouseX - ball.x, mouseY - ball.y);
+
+                if (distance <= ball.radius) {
+                    const scoreUI = document.getElementById('scoreDisplay');
+                    
+                    const currentShapeIdx = shapes.indexOf(ball.shape);
+                    const nextShape = shapes[(currentShapeIdx + 1) % shapes.length];
+                    
+                    if (ball.isBonus) {
+                        score += 50;
+                        scoreUI.innerHTML = `<span class="bonus-text">점수: ${score} (+50)</span>`;
+                        
+                        balls.splice(i, 1); 
+                        balls.push(new Ball(ball.x - 10, ball.y - 10, 20, colors[randomInt(0, colors.length - 1)], false, nextShape));
+                        balls.push(new Ball(ball.x + 10, ball.y + 10, 20, colors[randomInt(0, colors.length - 1)], false, nextShape));
+                        
+                        const newBonus = new Ball(randomInt(50, canvas.width - 50), randomInt(50, canvas.height - 50), 25, bonusColor, true, shapes[randomInt(0, 2)]);
+                        balls.push(newBonus);
+
+                    } else {
+                        score += 10;
+                        scoreUI.innerHTML = `점수: ${score}`;
+                        
+                        const newRadius = ball.radius > 15 ? ball.radius - 2 : 15;
+                        const newColor = colors[randomInt(0, colors.length - 1)];
+                        
+                        balls.splice(i, 1); 
+                        
+                        const ball1 = new Ball(ball.x - 10, ball.y - 10, newRadius, ball.color, false, nextShape);
+                        ball1.dx = ball.dx; ball1.dy = ball.dy;
+                        
+                        const ball2 = new Ball(ball.x + 10, ball.y + 10, newRadius, newColor, false, nextShape);
+                        ball2.dx = -ball.dx; ball2.dy = -ball.dy;
+                        
+                        balls.push(ball1);
+                        balls.push(ball2);
+                    }
+
+                    setTimeout(() => {
+                        scoreUI.innerHTML = `점수: ${score}`;
+                    }, 300);
+
+                    if (balls.length > 40) {
+                        const removeIdx = balls.findIndex(b => !b.isBonus);
+                        if (removeIdx !== -1) balls.splice(removeIdx, 1);
+                    }
+                    break; 
+                }
+            }
+        });
+
+        function animate() {
+            if (!isPlaying) return;
+            requestAnimationFrame(animate);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            balls.forEach(ball => {
+                ball.update(balls);
+            });
+        }
+
+        function updateTimer() {
+            timeLeft--;
+            document.getElementById('timeDisplay').innerText = `남은 시간: ${timeLeft}s`;
+
+            if (timeLeft <= 0) {
+                endGame();
+            }
+        }
+
+        function startGame() {
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('game-over').style.display = 'none';
+            
+            balls = [];
+            score = 0;
+            timeLeft = 30;
+            isPlaying = true;
+            
+            document.getElementById('scoreDisplay').innerHTML = `점수: 0`;
+            document.getElementById('timeDisplay').innerText = `남은 시간: 30s`;
+
+            for(let i=0; i<3; i++) {
+                balls.push(new Ball(
+                    randomInt(50, canvas.width - 50), 
+                    randomInt(50, canvas.height - 50), 
+                    30, 
+                    colors[randomInt(0, colors.length - 1)],
+                    false,
+                    shapes[randomInt(0, 2)]
+                ));
+            }
+
+            balls.push(new Ball(
+                randomInt(50, canvas.width - 50), 
+                randomInt(50, canvas.height - 50), 
+                25, 
+                bonusColor, 
+                true,
+                shapes[randomInt(0, 2)]
+            ));
+
+            animate();
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        function endGame() {
+            isPlaying = false;
+            clearInterval(timerInterval);
+            
+            let allSameShape = true;
+            let finalShape = balls.length > 0 ? balls[0].shape : null;
+            
+            if (balls.length > 0) {
+                for (let b of balls) {
+                    if (b.shape !== finalShape) {
+                        allSameShape = false;
+                        break;
+                    }
+                }
+            } else {
+                allSameShape = false;
+            }
+
+            let resultMessage = `최종 점수: ${score}`;
+            
+            if (allSameShape) {
+                score += 5000;
+                resultMessage = `
+                    최종 점수: ${score}<br>
+                    <span style="color:#FFD700; font-size:24px; display:block; margin-top:10px; text-shadow: 0 0 10px #FFD700;">
+                        🎉 퍼펙트 쉐이프 보너스! (+5000점) 🎉
+                    </span>
+                `;
+            }
+
+            document.getElementById('game-over').style.display = 'flex';
+            document.getElementById('finalScoreDisplay').innerHTML = resultMessage;
+        }
+
+        function saveScoreAndRestart() {
+            const nameInput = document.getElementById('playerName').value || 'Anonymous';
+            
+            let highScores = JSON.parse(localStorage.getItem('cellSplitScores')) || [];
+            
+            highScores.push({ name: nameInput, score: score });
+            highScores.sort((a, b) => b.score - a.score);
+            highScores = highScores.slice(0, 5);
+            
+            localStorage.setItem('cellSplitScores', JSON.stringify(highScores));
+            
+            loadLeaderboard();
+            
+            document.getElementById('game-over').style.display = 'none';
+            document.getElementById('menu').style.display = 'flex';
+            document.getElementById('playerName').value = '';
+        }
+
+        function loadLeaderboard() {
+            const highScores = JSON.parse(localStorage.getItem('cellSplitScores')) || [];
+            const leaderboardList = document.getElementById('menuLeaderboard');
+            leaderboardList.innerHTML = '';
+            
+            if (highScores.length === 0) {
+                leaderboardList.innerHTML = '<li>등록된 점수가 없습니다.</li>';
+                return;
+            }
+
+            highScores.forEach((entry, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `<span>${index + 1}. ${entry.name}</span> <span>${entry.score}점</span>`;
+                leaderboardList.appendChild(li);
+            });
+        }
+
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        document.getElementById('restartBtn').addEventListener('click', saveScoreAndRestart);
+
+        loadLeaderboard();
+
+    </script>
+</body>
+</html>
