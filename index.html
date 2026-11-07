@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>선생님의 과학 교실 & 학급 도우미</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;700&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f1f2f6;
+            color: #2f3542;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        header {
+            width: 100%;
+            background: linear-gradient(135deg, #1e90ff, #3742fa);
+            color: white;
+            text-align: center;
+            padding: 40px 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+        }
+
+        header h1 {
+            font-family: 'Jua', sans-serif;
+            font-size: 3rem;
+            margin: 0;
+            letter-spacing: 2px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        header p {
+            font-size: 1.1rem;
+            margin-top: 10px;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1000px;
+            width: 90%;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            padding-bottom: 50px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            border: 2px solid transparent;
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+            border-color: #1e90ff;
+        }
+
+        .card-icon {
+            font-size: 4rem;
+            text-align: center;
+            padding: 30px 0;
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #f1f2f6;
+        }
+
+        .card-content {
+            padding: 25px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-title {
+            font-family: 'Jua', sans-serif;
+            font-size: 1.5rem;
+            color: #2f3542;
+            margin: 0 0 10px 0;
+        }
+
+        .card-desc {
+            font-size: 0.95rem;
+            color: #747d8c;
+            line-height: 1.5;
+            margin: 0 0 20px 0;
+            flex-grow: 1;
+        }
+
+        .card-btn {
+            background-color: #1e90ff;
+            color: white;
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+
+        .card:hover .card-btn {
+            background-color: #3742fa;
+        }
+        
+        .footer {
+            margin-top: auto;
+            padding: 20px;
+            text-align: center;
+            color: #a4b0be;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>선생님의 과학 교실 & 학급 도우미</h1>
+        <p>수업을 더 즐겁고 직관적으로 만들어주는 시뮬레이션 모음입니다.</p>
+    </header>
+
+    <div class="container">
+        <!-- 1. 종합 학급 도우미 -->
+        <a href="presenter_picker_v6.html" class="card" target="_blank">
+            <div class="card-icon" style="background-color: #fff9c4;">🎤</div>
+            <div class="card-content">
+                <h2 class="card-title">1학년 종합 학급 도우미</h2>
+                <p class="card-desc">발표자 무작위 뽑기, 인원별 모둠 편성, 그리고 앞자리 지정 기능이 포함된 5x5 자리 배치도 프로그램입니다.</p>
+                <div class="card-btn">실행하기</div>
+            </div>
+        </a>
+
+        <!-- 2. 지구 계절 시뮬레이션 -->
+        <a href="earth_seasons_korea_sim.html" class="card" target="_blank">
+            <div class="card-icon" style="background-color: #e1f5fe;">🌏</div>
+            <div class="card-content">
+                <h2 class="card-title">계절의 변화 시뮬레이션</h2>
+                <p class="card-desc">지구의 자전과 공전, 23.5도 자전축 기울기에 따른 태양 고도와 낮의 길이 변화를 우리나라(북위 37.5도) 기준으로 관찰합니다.</p>
+                <div class="card-btn">실행하기</div>
+            </div>
+        </a>
+
+        <!-- 3. 보일의 법칙 시뮬레이션 -->
+        <a href="boyles_law_2d_particles.html" class="card" target="_blank">
+            <div class="card-icon" style="background-color: #fce4ec;">🎈</div>
+            <div class="card-content">
+                <h2 class="card-title">보일의 법칙 (입자 운동)</h2>
+                <p class="card-desc">진공 챔버 안의 외부 압력을 낮출 때 풍선이 커지는 원리를 기체 분자의 충돌(입자 운동)을 통해 직관적으로 이해합니다.</p>
+                <div class="card-btn">실행하기</div>
+            </div>
+        </a>
+
+        <!-- 4. 세포 분열 게임 -->
+        <a href="cell_split_game_v3.html" class="card" target="_blank">
+            <div class="card-icon" style="background-color: #e8f5e9;">🦠</div>
+            <div class="card-content">
+                <h2 class="card-title">세포 분열 미니 게임</h2>
+                <p class="card-desc">공을 클릭하면 분열하며 모양이 변합니다. 30초 동안 황금 공을 찾아 점수를 얻고 모양을 통일하는 집중력 게임입니다.</p>
+                <div class="card-btn">실행하기</div>
+            </div>
+        </a>
+    </div>
+
+    <div class="footer">
+        © 2026 선생님의 수업 자료 | GitHub Pages로 호스팅됨
+    </div>
+
+</body>
+</html>
